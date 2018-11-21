@@ -4,6 +4,7 @@ import gym
 import numpy as np
 import torch
 from gym.spaces.box import Box
+import maze_env
 
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
@@ -31,36 +32,13 @@ except ImportError:
 
 def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
     def _thunk():
-        if env_id.startswith("dm"):
-            _, domain, task = env_id.split('.')
-            env = dm_control2gym.make(domain_name=domain, task_name=task)
-        else:
-            env = gym.make(env_id)
-
-        is_atari = hasattr(gym.envs, 'atari') and isinstance(
-            env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
-        if is_atari:
-            env = make_atari(env_id)
+        env = gym.make(env_id)
 
         env.seed(seed + rank)
-
-        obs_shape = env.observation_space.shape
-
-        if add_timestep and len(
-                obs_shape) == 1 and str(env).find('TimeLimit') > -1:
-            env = AddTimestep(env)
 
         if log_dir is not None:
             env = bench.Monitor(env, os.path.join(log_dir, str(rank)),
                                 allow_early_resets=allow_early_resets)
-
-        if is_atari:
-            if len(env.observation_space.shape) == 3:
-                env = wrap_deepmind(env)
-        elif len(env.observation_space.shape) == 3:
-            raise NotImplementedError("CNN models work only for atari,\n"
-                "please use a custom wrapper for a custom pixel input env.\n"
-                "See wrap_deepmind for an example.")
         
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
@@ -88,11 +66,6 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
             envs = VecNormalize(envs, gamma=gamma)
 
     envs = VecPyTorch(envs, device)
-
-    if num_frame_stack is not None:
-        envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
-    elif len(envs.observation_space.shape) == 3:
-        envs = VecPyTorchFrameStack(envs, 4, device)
 
     return envs
 
@@ -152,6 +125,7 @@ class VecPyTorch(VecEnvWrapper):
         obs, reward, done, info = self.venv.step_wait()
         obs = torch.from_numpy(obs).float().to(self.device)
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
+        reward = (reward > 0).float()
         return obs, reward, done, info
 
 

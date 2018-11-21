@@ -64,7 +64,8 @@ while True:
 
     # Obser reward and next obs
     obs, reward, done, _ = env.step(action)
-
+    if reward[0, 0] > 0:
+        print("Very cool!")
     masks.fill_(0.0 if done else 1.0)
 
     if args.env_name.find('Bullet') > -1:
