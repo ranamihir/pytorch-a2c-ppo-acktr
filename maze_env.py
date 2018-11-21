@@ -1,4 +1,5 @@
 import numpy as np
+from queue import Queue
 from gym_minigrid.minigrid import *
 from gym_minigrid.register import register
 from gym_minigrid.wrappers import FullyObsWrapper, ActionBonus
@@ -36,7 +37,7 @@ class MultiRoomEnv(MiniGridEnv):
         self.rooms = []
 
         super(MultiRoomEnv, self).__init__(
-            grid_size=8
+            grid_size=20
         )
 
     def _gen_grid(self, width, height):
@@ -240,16 +241,125 @@ class MultiRoomEnv(MiniGridEnv):
 class MultiRoomEnvN6(MultiRoomEnv):
     def __init__(self):
         super().__init__(
-            minNumRooms=1,
-            maxNumRooms=2
+            minNumRooms=5,
+            maxNumRooms=10
         )
 
 register(
     id='MiniGrid-Maze-v0',
-    entry_point=lambda :FullyObsWrapper(MultiRoomEnvN6()),
+    entry_point=lambda: FullyObsWrapper(MultiRoomEnvN6()),
     reward_threshold=1000.0
 )
 
+def BFS(grid, q, visited, paths):
+    current_index = q.get()
+    current_x, current_y = current_index[0], current_index[1]
+
+    element = grid[current_x, current_y]
+    visited[current_x, current_y] = 1
+
+    if element == 9:
+        return current_x, current_y
+
+    for x in range(current_x-1, current_x+2):
+        for y in range(current_y-1, current_y+2):
+            if not (x == current_x and y == current_y) \
+                and not (abs(x-current_x) + abs(y-current_y) > 1) \
+                and x >- 1 and y >- 1 \
+                and x < grid.shape[0] and y < grid.shape[1] \
+                and grid[x,y] not in [2] \
+                and (x,y) not in q.queue \
+                and not visited[x,y]:
+                paths[(x,y)] = (current_x, current_y)
+                q.put((x,y))
+    return BFS(grid, q, visited, paths)
+
+def get_optimal_path(obs):
+    '''
+    Grid:
+        1   -> Movable cells
+        2   -> Wall
+        4   -> Door
+        9   -> Reward
+        255 -> Agent
+
+    Orientations:
+        Right -> 0
+        Down  -> 1
+        Left  -> 2
+        Up    -> 3
+    '''
+    paths = {}
+
+    grid, orientation = obs[:,:,0].T, obs[:,:,1].T
+
+    visited = np.zeros(grid.shape)
+
+    initial_position = tuple(np.array(np.where(grid == 255)).ravel())
+    start_queue = Queue()
+    start_queue.put(initial_position)
+    reward_position = BFS(grid, start_queue, visited, paths)
+    keys = get_optimal_keys(grid, paths, orientation, reward_position, initial_position)
+
+    return keys
+
+def get_optimal_keys(grid, paths, orientation, reward_position, initial_position):
+    steps = [reward_position]
+
+    # Get list of steps to be taken
+    start_position = reward_position
+    while paths[start_position] != initial_position:
+        next_step = paths[start_position]
+        steps.append(next_step)
+        start_position = next_step
+    steps.append(initial_position)
+    steps = steps[::-1]
+
+    # Get list of keys corresponding to each step
+    orientation_map = {
+        (0,0): [],
+        (0,1): ['RIGHT'],
+        (0,2): ['RIGHT']*2,
+        (0,3): ['LEFT'],
+        (1,0): ['LEFT'],
+        (1,1): [],
+        (1,2): ['RIGHT'],
+        (1,3): ['RIGHT']*2,
+        (2,0): ['RIGHT']*2,
+        (2,1): ['LEFT'],
+        (2,2): [],
+        (2,3): ['RIGHT'],
+        (3,0): ['RIGHT'],
+        (3,1): ['RIGHT']*2,
+        (3,2): ['LEFT'],
+        (3,3): []
+    }
+
+    keys = []
+    current_position = steps[0]
+    current_orientation = orientation[current_position]
+    for i in range(len(steps)-1):
+        if steps[i+1][0] - steps[i][0] == 1:
+            keys.extend(orientation_map[(current_orientation, 1)])
+            current_orientation = 1
+        elif steps[i+1][0] - steps[i][0] == -1:
+            keys.extend(orientation_map[(current_orientation, 3)])
+            current_orientation = 3
+        elif steps[i+1][1] - steps[i][1] == 1:
+            keys.extend(orientation_map[(current_orientation, 0)])
+            current_orientation = 0
+        elif steps[i+1][1] - steps[i][1] == -1:
+            keys.extend(orientation_map[(current_orientation, 2)])
+            current_orientation = 2
+
+        # Open Door
+        if grid[steps[i+1]] == 4:
+            keys.append('SPACE')
+
+        keys.append('UP')
+        current_position = steps[i+1]
+
+    return keys
 
 def main():
     import sys
@@ -302,24 +412,24 @@ def main():
 
         obs, reward, done, info = env.step(action)
 
-        print(obs[:,:,0])
-        print(obs[:,:,1])
-        print(obs[:,:,2])
         print('step=%s, reward=%.2f' % (env.step_count, reward))
 
         if done:
             print('done!')
             resetEnv()
 
-    renderer.window.setKeyDownCb(keyDownCb)
-
     while True:
-        env.render('human')
-        time.sleep(0.01)
+        # Get the current observations
+        obs = env.observation(0)
 
-        # If the window was closed
-        if renderer.window == None:
-            break
+        # Take optimal steps
+        optimal_path_keys = get_optimal_path(obs)
+        for key in optimal_path_keys:
+            keyDownCb(key)
+            env.render('human')
+            # time.sleep(0.01)
+
+
 
 if __name__ == "__main__":
     main()
