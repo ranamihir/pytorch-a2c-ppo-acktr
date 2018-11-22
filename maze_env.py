@@ -8,10 +8,14 @@ from gym_minigrid.register import register
 from gym_minigrid.wrappers import FullyObsWrapper, ActionBonus
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num-mazes', metavar='NUM_MAZES', dest='num_mazes', help='number of mazes', required=False, default=10000)
-parser.add_argument('--grid-size', metavar='GRID_SIZE', dest='grid_size', help='grid size', required=False, default=20)
-parser.add_argument('--min-num-rooms', metavar='MIN_NUM_ROOMS', dest='min_num_rooms', help='min number of rooms', required=False, default=5)
-parser.add_argument('--max-num-rooms', metavar='MAX_NUM_ROOMS', dest='max_num_rooms', help='max number of rooms', required=False, default=10)
+parser.add_argument('--num-mazes', metavar='NUM_MAZES', dest='num_mazes', help='number of mazes', required=False, \
+                    type=int, default=10000)
+parser.add_argument('--grid-size', metavar='GRID_SIZE', dest='grid_size', help='grid size', required=False, \
+                    type=int, default=20)
+parser.add_argument('--min-num-rooms', metavar='MIN_NUM_ROOMS', dest='min_num_rooms', help='min number of rooms', \
+                    required=False, type=int, default=5)
+parser.add_argument('--max-num-rooms', metavar='MAX_NUM_ROOMS', dest='max_num_rooms', help='max number of rooms', \
+                    required=False, type=int, default=10)
 args = parser.parse_args()
 
 NUM_MAZES = args.num_mazes
