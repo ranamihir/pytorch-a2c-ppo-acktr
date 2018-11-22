@@ -1,15 +1,23 @@
 import numpy as np
 import h5py
 import os
+import argparse
 from queue import Queue
 from gym_minigrid.minigrid import *
 from gym_minigrid.register import register
 from gym_minigrid.wrappers import FullyObsWrapper, ActionBonus
 
-NUM_MAZES = 10000
-GRID_SIZE = 20
-MIN_NUM_ROOMS = 5
-MAX_NUM_ROOMS = 10
+parser = argparse.ArgumentParser()
+parser.add_argument('--num-mazes', metavar='NUM_MAZES', dest='num_mazes', help='number of mazes', required=False, default=10000)
+parser.add_argument('--grid-size', metavar='GRID_SIZE', dest='grid_size', help='grid size', required=False, default=20)
+parser.add_argument('--min-num-rooms', metavar='MIN_NUM_ROOMS', dest='min_num_rooms', help='min number of rooms', required=False, default=5)
+parser.add_argument('--max-num-rooms', metavar='MAX_NUM_ROOMS', dest='max_num_rooms', help='max number of rooms', required=False, default=10)
+args = parser.parse_args()
+
+NUM_MAZES = args.num_mazes
+GRID_SIZE = args.grid_size
+MIN_NUM_ROOMS = args.min_num_rooms
+MAX_NUM_ROOMS = args.max_num_rooms
 
 
 class Room:
