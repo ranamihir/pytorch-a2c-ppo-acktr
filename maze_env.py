@@ -1,8 +1,16 @@
 import numpy as np
+import h5py
+import os
 from queue import Queue
 from gym_minigrid.minigrid import *
 from gym_minigrid.register import register
 from gym_minigrid.wrappers import FullyObsWrapper, ActionBonus
+
+NUM_MAZES = 10000
+GRID_SIZE = 20
+MIN_NUM_ROOMS = 5
+MAX_NUM_ROOMS = 10
+
 
 class Room:
     def __init__(self,
@@ -37,7 +45,7 @@ class MultiRoomEnv(MiniGridEnv):
         self.rooms = []
 
         super(MultiRoomEnv, self).__init__(
-            grid_size=20
+            grid_size=GRID_SIZE
         )
 
     def _gen_grid(self, width, height):
@@ -241,8 +249,8 @@ class MultiRoomEnv(MiniGridEnv):
 class MultiRoomEnvN6(MultiRoomEnv):
     def __init__(self):
         super().__init__(
-            minNumRooms=5,
-            maxNumRooms=10
+            minNumRooms=MIN_NUM_ROOMS,
+            maxNumRooms=MAX_NUM_ROOMS
         )
 
 register(
@@ -361,6 +369,14 @@ def get_optimal_keys(grid, paths, orientation, reward_position, initial_position
 
     return keys
 
+def save_object(data, filepath):
+    '''
+    This is a defensive way to write pickle.write, allowing for very large files on all platforms
+    '''
+    with h5py.File(filepath, 'w') as hf:
+        for i in range(len(data)):
+            hf.create_dataset('maze_{}'.format(i),  data=data[i])
+
 def main():
     import sys
     import time
@@ -376,8 +392,8 @@ def main():
 
     resetEnv()
 
-    # Create a window to render into
-    renderer = env.render('human')
+    # # Create a window to render into
+    # renderer = env.render('human')
 
     def keyDownCb(keyName):
         if keyName == 'BACKSPACE':
@@ -412,23 +428,45 @@ def main():
 
         obs, reward, done, info = env.step(action)
 
-        print('step=%s, reward=%.2f' % (env.step_count, reward))
+        # print('step=%s, reward=%.2f' % (env.step_count, reward))
 
         if done:
             print('done!')
             resetEnv()
 
-    while True:
-        # Get the current observations
-        obs = env.observation(0)
+        return obs
 
-        # Take optimal steps
-        optimal_path_keys = get_optimal_path(obs)
-        for key in optimal_path_keys:
-            keyDownCb(key)
-            env.render('human')
-            # time.sleep(0.01)
+    maze_idx = 1
+    all_mazes = []
 
+    try:
+        while maze_idx <= NUM_MAZES:
+            # Get the current observations
+            obs = env.observation(0)
+            current_maze = obs[:,:,0].T[np.newaxis,:]
+
+            # Take optimal steps
+            optimal_path_keys = get_optimal_path(obs)
+            for key in optimal_path_keys:
+                obs = keyDownCb(key)
+                if obs is not None:
+                    current_maze = np.vstack((current_maze, obs[:,:,0].T[np.newaxis,:]))
+                # env.render('human')
+                # time.sleep(0.02)
+            all_mazes.append(current_maze)
+
+            print('Finished maze number {}.'.format(maze_idx))
+            maze_idx += 1
+
+    except KeyboardInterrupt:
+        maze_idx -= 1
+        pass
+
+    data_dir = './data'
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    filepath = os.path.join(data_dir, 'all_mazes_{}_{}_{}_{}.h5'.format(maze_idx, GRID_SIZE, MIN_NUM_ROOMS, MAX_NUM_ROOMS))
+    save_object(all_mazes, filepath)
 
 
 if __name__ == "__main__":
