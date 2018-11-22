@@ -477,7 +477,7 @@ def main():
     data_dir = './data'
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
-    filepath = os.path.join(data_dir, 'all_mazes_{}_{}_{}_{}.h5'.format(maze_idx, GRID_SIZE, MIN_NUM_ROOMS, MAX_NUM_ROOMS))
+    filepath = os.path.join(data_dir, 'all_mazes_{}_{}_{}_{}.h5'.format(min(maze_idx, NUM_MAZES), GRID_SIZE, MIN_NUM_ROOMS, MAX_NUM_ROOMS))
     save_object(all_mazes, filepath)
 
 
