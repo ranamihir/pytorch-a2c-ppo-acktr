@@ -455,14 +455,14 @@ def main():
         while maze_idx <= NUM_MAZES:
             # Get the current observations
             obs = env.observation(0)
-            current_maze = obs[:,:,0].T[np.newaxis,:]
+            current_maze = obs[np.newaxis,:]
 
             # Take optimal steps
             optimal_path_keys = get_optimal_path(obs)
             for key in optimal_path_keys:
                 obs = keyDownCb(key)
                 if obs is not None:
-                    current_maze = np.vstack((current_maze, obs[:,:,0].T[np.newaxis,:]))
+                    current_maze = np.vstack((current_maze, obs[np.newaxis,:]))
                 # env.render('human')
                 # time.sleep(0.02)
             all_mazes.append(current_maze)
