@@ -382,12 +382,9 @@ def get_optimal_keys(grid, paths, orientation, reward_position, initial_position
     return keys
 
 def save_object(data, filepath):
-    '''
-    This is a defensive way to write pickle.write, allowing for very large files on all platforms
-    '''
     with h5py.File(filepath, 'w') as hf:
         for i in range(len(data)):
-            hf.create_dataset('maze_{}'.format(i),  data=data[i])
+            hf.create_dataset('maze_{}'.format(i), data=np.transpose(data[i], (0,3,1,2)))
 
 def main():
     import sys
