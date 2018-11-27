@@ -16,12 +16,15 @@ parser.add_argument('--min-num-rooms', metavar='MIN_NUM_ROOMS', dest='min_num_ro
                     required=False, type=int, default=5)
 parser.add_argument('--max-num-rooms', metavar='MAX_NUM_ROOMS', dest='max_num_rooms', help='max number of rooms', \
                     required=False, type=int, default=10)
+parser.add_argument('--num-rand-steps', metavar='NUM_RAND_STEPS', dest='num_rand_steps', help='number of random steps', \
+                    required=False, type=int, default=10)
 args = parser.parse_args()
 
 NUM_MAZES = args.num_mazes
 GRID_SIZE = args.grid_size
 MIN_NUM_ROOMS = args.min_num_rooms
 MAX_NUM_ROOMS = args.max_num_rooms
+NUM_RAND_STEPS = args.num_rand_steps
 
 
 class Room:
@@ -453,6 +456,15 @@ def main():
             # Get the current observations
             obs = env.observation(0)
             current_maze = obs[np.newaxis,:]
+
+            # Take random steps in the beginning
+            for step in range(NUM_RAND_STEPS):
+                key = np.random.choice(['LEFT', 'RIGHT', 'UP', 'SPACE'])
+                obs = keyDownCb(key)
+                if obs is not None:
+                    current_maze = np.vstack((current_maze, obs[np.newaxis,:]))
+                # env.render('human')
+                # time.sleep(0.02)
 
             # Take optimal steps
             optimal_path_keys = get_optimal_path(obs)
